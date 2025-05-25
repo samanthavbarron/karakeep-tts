@@ -53,7 +53,7 @@ class Bookmark:
     description: str | None = None
     
     def path(self, ext: str = "mp3") -> Path:
-        return media_path / f"{self.id[:8]}.{ext}"
+        return media_path / f"{self.title}.{ext}"
 
     @classmethod
     def from_dict(cls, data: dict):
