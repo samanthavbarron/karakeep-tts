@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "elevenlabs>=2.1.0",
+    "html2text>=2025.4.15",
+    "mutagen>=1.47.0",
+    "python-dotenv>=1.1.0",
+    "rich>=14.0.0",
+]
