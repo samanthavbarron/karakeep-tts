@@ -107,9 +107,12 @@ class Bookmark:
     def remove_from_list(self):
         karakeep_req(f"lists/{get_list_id_from_name(CONFIG.bookmark_list_name)}/bookmarks/{self.id}", method="DELETE")
     
+    def process(self):
+        if not self.path().exists():
+            self.generate_audio()
+        self.remove_from_list()
+    
     def generate_audio(self):
-        if self.path().exists():
-            return
         response = elevenlabs.text_to_speech.convert(
             text=self.get_full_content(),
             voice_id=get_random_voice_id(),
@@ -128,5 +131,7 @@ class Bookmark:
 
 if __name__ == "__main__":
     for bookmark in tqdm(list(get_bookmarks())):
-        bookmark.generate_audio()
-        bookmark.remove_from_list()
+        try:
+            bookmark.process()
+        except Exception as e:
+            print(f"Error processing bookmark {bookmark.id}: {e}")
