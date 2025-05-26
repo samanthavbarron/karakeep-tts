@@ -48,7 +48,10 @@ def karakeep_req(url: str, method: str = "GET") -> dict:
     res = conn.getresponse()
     data = res.read()
     response_str = data.decode("utf-8")
-    return json.loads(response_str)
+    try:
+        return json.loads(response_str)
+    except:
+        return {}
 
 @lru_cache()
 def get_list_id_from_name(name: str) -> str:
