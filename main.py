@@ -1,48 +1,70 @@
 import datetime
 import http.client
-
+import json
+import os
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from random import choice
+
 import html2text
-import json
-from mutagen.easyid3 import EasyID3
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-import os
-from rich import print
+from mutagen.easyid3 import EasyID3
 
 load_dotenv()
 
-elevenlabs = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+@dataclass
+class Config:
+    media_path: Path = Path(os.getenv("MEDIA_PATH", "media"))
+    elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
+    karakeep_api_key: str = os.getenv("KARAKEEP_API_KEY", "")
+    karakeep_api_host: str = os.getenv("KARAKEEP_API_HOST", "")
+    bookmark_list_name: str = os.getenv("BOOKMARK_LIST_NAME", "Podcast")
+    elevenlabs_model_id: str = os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
 
-h = html2text.HTML2Text()
-h.ignore_links = True
-h.ignore_emphasis = True
-h.ignore_images = True
-h.ignore_tables = True
+CONFIG = Config()
 
-def karakeep_req(url: str):
-    conn = http.client.HTTPSConnection(os.getenv("KARAKEEP_API_HOST", "api.karakeep.com"))
+elevenlabs = ElevenLabs(api_key=CONFIG.elevenlabs_api_key)
+
+html_converter = html2text.HTML2Text()
+html_converter.ignore_links = True
+html_converter.ignore_emphasis = True
+html_converter.ignore_images = True
+html_converter.ignore_tables = True
+
+media_path = Path(CONFIG.media_path)
+media_path.mkdir(parents=True, exist_ok=True)
+
+def karakeep_req(url: str, method: str = "GET") -> dict:
+    conn = http.client.HTTPSConnection(CONFIG.karakeep_api_host)
     payload = ''
     headers = {
         'Accept': 'application/json',
-        'Authorization': f'Bearer {os.getenv("KARAKEEP_API_KEY")}'
+        'Authorization': f'Bearer {CONFIG.karakeep_api_key}',
     }
-    conn.request("GET", "/api/v1/" + url, payload, headers)
+    conn.request(method, "/api/v1/" + url, payload, headers)
     res = conn.getresponse()
     data = res.read()
     response_str = data.decode("utf-8")
     return json.loads(response_str)
 
+@lru_cache()
 def get_list_id_from_name(name: str) -> str:
     for l in karakeep_req("lists")["lists"]:
         if l.get("name", None) == name:
             return l.get("id")
     raise ValueError(f"List not found: {name}")
 
-media_path = Path(os.getenv("MEDIA_PATH", "media"))
-media_path.mkdir(parents=True, exist_ok=True)
+def get_bookmarks(list_name: str = CONFIG.bookmark_list_name):
+    for bookmark in karakeep_req(f"lists/{get_list_id_from_name(list_name)}/bookmarks")["bookmarks"]:
+        if _bm := Bookmark.from_dict(bookmark):
+            yield _bm
+
+def get_random_voice_id() -> str:
+    voices = elevenlabs.voices.search(category="premade", page_size=50).voices
+    return choice(voices).voice_id
+
 
 @dataclass
 class Bookmark:
@@ -62,7 +84,7 @@ class Bookmark:
                 id=data["id"],
                 title=data["content"]["title"],
                 url=data["content"]["url"],
-                content=h.handle(data["content"]["htmlContent"]),
+                content=html_converter.handle(data["content"]["htmlContent"]),
                 description=data["content"].get("description", None)
             )
             if res.title is None and res.description is not None:
@@ -81,13 +103,16 @@ class Bookmark:
     def get_full_content(self) -> str:
         return f"{self.preamble()}\n\n{self.content}\n\n{self.postamble()}"
     
+    def remove_from_list(self):
+        karakeep_req(f"lists/{get_list_id_from_name(CONFIG.bookmark_list_name)}/bookmarks/{self.id}", method="DELETE")
+    
     def generate_audio(self):
         if self.path().exists():
             return
         response = elevenlabs.text_to_speech.convert(
             text=self.get_full_content(),
             voice_id=get_random_voice_id(),
-            model_id="eleven_turbo_v2_5",
+            model_id=CONFIG.elevenlabs_model_id,
             output_format="mp3_44100_128",
         )
         with open(self.path(), "wb") as f:
@@ -100,16 +125,7 @@ class Bookmark:
             audio["date"] = datetime.datetime.now().isoformat()
             audio.save()
 
-def get_bookmarks(list_name: str = "Podcast"):
-    for bookmark in karakeep_req(f"lists/{get_list_id_from_name(list_name)}/bookmarks")["bookmarks"]:
-        if _bm := Bookmark.from_dict(bookmark):
-            yield _bm
-
-def get_random_voice_id() -> str:
-    voices = elevenlabs.voices.search(category="premade", page_size=50).voices
-    return choice(voices).voice_id
-
 if __name__ == "__main__":
-    for bookmark in get_bookmarks("Podcast"):
-        print(f"Title: {bookmark.title}")
+    for bookmark in get_bookmarks():
         bookmark.generate_audio()
+        bookmark.remove_from_list()
