@@ -37,7 +37,7 @@ media_path = Path(CONFIG.media_path)
 media_path.mkdir(parents=True, exist_ok=True)
 
 def karakeep_req(url: str, method: str = "GET") -> dict:
-    conn = http.client.HTTPSConnection(CONFIG.karakeep_api_host)
+    conn = http.client.HTTPSConnection(CONFIG.karakeep_api_host, timeout=600)
     payload = ''
     headers = {
         'Accept': 'application/json',
