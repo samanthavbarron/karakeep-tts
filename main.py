@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from tqdm import tqdm
 from random import choice
 
 import html2text
@@ -126,6 +127,6 @@ class Bookmark:
             audio.save()
 
 if __name__ == "__main__":
-    for bookmark in get_bookmarks():
+    for bookmark in tqdm(list(get_bookmarks())):
         bookmark.generate_audio()
         bookmark.remove_from_list()
