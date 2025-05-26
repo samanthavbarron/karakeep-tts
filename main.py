@@ -1,10 +1,12 @@
 import datetime
+import requests
 import http.client
 import json
 import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+import time
 from tqdm import tqdm
 from random import choice
 
@@ -23,6 +25,8 @@ class Config:
     karakeep_api_host: str = os.getenv("KARAKEEP_API_HOST", "")
     bookmark_list_name: str = os.getenv("BOOKMARK_LIST_NAME", "Podcast")
     elevenlabs_model_id: str = os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
+    sleep_interval: int = int(os.getenv("SLEEP_INTERVAL", 60))
+    hc_url: str = os.getenv("HEALTHCHECK_URL", "")
 
 CONFIG = Config()
 
@@ -132,9 +136,34 @@ class Bookmark:
             audio["date"] = datetime.datetime.now().isoformat()
             audio.save()
 
+def ping_hc(failure: bool = False):
+    if not CONFIG.hc_url:
+        return  # No healthcheck URL configured
+
+    hc_url = CONFIG.hc_url.rstrip("/")
+    if failure:
+        hc_url = hc_url + "/fail"
+
+    try:
+        requests.get(CONFIG.hc_url, timeout=10)
+    except requests.RequestException as e:
+        print("Ping failed: %s" % e)
+
+
 if __name__ == "__main__":
-    for bookmark in tqdm(list(get_bookmarks())):
-        try:
-            bookmark.process()
-        except Exception as e:
-            print(f"Error processing bookmark {bookmark.id}: {e}")
+    try:
+        while True:
+            for bookmark in tqdm(list(get_bookmarks())):
+                try:
+                    bookmark.process()
+                except Exception as e:
+                    print(f"Error processing bookmark {bookmark.id}: {e}")
+            ping_hc()
+            time.sleep(CONFIG.sleep_interval)
+    except Exception as e:
+        if isinstance(e, KeyboardInterrupt):
+            print("Process interrupted by user.")
+        else:
+            print(f"An error occurred: {e}")
+            ping_hc(failure=True)
+            raise e
