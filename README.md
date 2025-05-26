@@ -15,4 +15,4 @@ To use this script, there are a few required environment variables, described be
 | `BOOKMARK_LIST_NAME`     | `Podcast`                | No       | Name of the bookmark list                        |
 | `ELEVENLABS_MODEL_ID`    | `eleven_turbo_v2_5`      | No       | ElevenLabs voice model ID                        |
 | `SLEEP_INTERVAL`         | `60`                     | No       | Time (in seconds) to wait between intervals      |
-| `HEALTHCHECK_URL`        | ``                       | No       | URL for external healthcheck monitoring          |
+| `HEALTHCHECK_URL`        | None                       | No       | URL for external healthcheck monitoring          |
