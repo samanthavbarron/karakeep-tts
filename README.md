@@ -1,10 +1,15 @@
 # `karakeep-tts`
 
-This repo contains a relatively simple script `main.py` which watches a bookmark list in Karakeep for new bookmarks, generates an MP3 using ElevenLabs from the text of the bookmark, and removes the bookmark from the list. A random voice is chosen for each article to try to keep things fresh. :)
+This repo contains a relatively simple script `main.py` which watches a bookmark list in [Karakeep](https://karakeep.app/) for new bookmarks, generates an MP3 using [ElevenLabs](https://elevenlabs.io/) from the text of the bookmark, and removes the bookmark from the list. A random voice is chosen for each article to try to keep things fresh. :)
 
-It is intended for use with a project like Audiobookshelf so that you can use Karakeep as a podcast feed for select articles.
+It is intended for use with a project like [Audiobookshelf](https://www.audiobookshelf.org/) so that you can use Karakeep as a podcast feed for select articles.
 
-To use this script, there are a few required environment variables, described below.
+## Usage
+To use this script, there are a few required environment variables, described below. An example is provided in `example.env`, adjust appropriately and rename to `.env` for use.
+
+To run the script, [install uv](https://docs.astral.sh/uv/getting-started/installation/) and run `uv run main.py`. Put it in a `tmux` or `screen` session if you prefer.
+
+## Environment Variables
 
 | Environment Variable     | Default Value           | Required | Description                                      |
 |--------------------------|--------------------------|----------|--------------------------------------------------|
